@@ -226,6 +226,7 @@ function render(){
     : sortBy === "versand" ? (a,b) => carRank(a) - carRank(b) || byDue(a,b)
     : byDue;
   const list = items.filter(i=>i.status===tab).sort(cmp);
+  shown = list;
   $("#sortbar").style.display = tab === "packen" && list.length > 1 ? "" : "none";
   document.querySelectorAll("#sortbar button").forEach(b=>b.classList.toggle("on", b.dataset.sort===sortBy));
   const box = $("#list");
@@ -253,17 +254,19 @@ function renderDetail(){
   $("#sheet").innerHTML = `<div class="grab"></div><button class="x" id="close" aria-label="schließen">×</button>
     <div class="nrbig c-${carOf(it)}">${esc(it.nr || it.titel)}</div>${body}<select id="statusSel" class="sel">${opts}</select>`;
 }
-let gal = [], galIx = 0;
+let gal = [], galIx = 0, shown = [];
 function openGal(kind, ix){
   const it = items.find(i=>i.id===openId); if(!it) return;
+  const list = shown.length ? shown : [it];
   if(kind === "photos"){
-    gal = teileOf(it).filter(t=>img(t.bild)).map(t=>({src:bigImg(t.bild), label:it.nr||"", car:carOf(it), cap:t.name, white:false}));
-    galIx = Math.min(ix, gal.length-1);
+    gal = []; let start = 0;
+    list.forEach(p=>{ teileOf(p).forEach((t,k)=>{ if(!img(t.bild)) return;
+      if(p.id===it.id && k===ix) start = gal.length;
+      gal.push({src:bigImg(t.bild), label:p.nr||"", car:carOf(p), cap:t.name, white:false, id:p.id}); }); });
+    galIx = start;
   } else {
-    // alle Codes für dieselbe Abgabestelle, die noch wegmüssen
-    const same = items.filter(i=>i.status==="wegbringen" && i.versand===it.versand && img(i.qr)).sort((a,b)=>String(a.nr).localeCompare(String(b.nr)));
-    gal = same.map(i=>({src:img(i.qr).replace("sz=w400","sz=w1200"), label:i.nr||"", car:carOf(i), cap:i.titel, white:true}));
-    galIx = Math.max(0, same.findIndex(i=>i.id===it.id));
+    gal = list.filter(p=>img(p.qr)).map(p=>({src:img(p.qr).replace("sz=w400","sz=w1200"), label:p.nr||"", car:carOf(p), cap:(ORTE[p.versand]||"") + " · " + p.titel, white:true, id:p.id}));
+    galIx = Math.max(0, gal.findIndex(g=>g.id===it.id));
   }
   if(!gal.length) return;
   showGal(); $("#zoom").classList.add("show");
