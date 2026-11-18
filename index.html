@@ -6,6 +6,10 @@
 <meta name="robots" content="noindex">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pakete">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f6f5f2">
 <title>Pakete</title>
 <style>
   :root{
@@ -161,7 +165,6 @@ let items = [], tab = "packen", openId = null, key = "", busy = 0;
 let undoInfo = null, toastTimer = null;
 try { const t = localStorage.getItem("pakete-tab"); if (STEPS.includes(t)) tab = t; } catch(e){}
 try { key = new URLSearchParams(location.search).get("k") || ""; if(key) localStorage.setItem("pakete-key", key); else key = localStorage.getItem("pakete-key") || ""; } catch(e){}
-if(key && location.search){ try{ history.replaceState(null, "", location.pathname); }catch(e){} }
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
