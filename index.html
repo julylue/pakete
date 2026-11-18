@@ -149,6 +149,7 @@
   .th{flex:none;width:52px;height:52px;padding:0;border:2.5px solid transparent;border-radius:10px;background:none;cursor:pointer;overflow:hidden}
   .th img{width:100%;height:100%;object-fit:cover;display:block}
   .th.on{border-color:var(--ink)}
+  .back{margin-top:10px;border:0;background:none;color:var(--muted);font:inherit;font-size:15px;text-decoration:underline;padding:8px;cursor:pointer}
   .ftitle{margin:0;font-size:19px;font-weight:700;line-height:1.3}
   .fsub{margin:4px 0 0;font-size:15px;color:var(--muted)}
   .fbelow .due{margin:6px 0 0;font-size:15px}
@@ -293,7 +294,7 @@ function renderDetail(){
   } else if(it.status === "wegbringen"){
     const qr = img(it.qr) ? img(it.qr).replace("sz=w400","sz=w1200") : "";
     stage = qr ? `<div class="code"><img src="${qr}" alt="Versand-Code" referrerpolicy="no-referrer"></div>` : `<div class="nophoto">Code fehlt noch</div>`;
-    below = `<p class="ftitle">${esc(it.titel)}</p>`;
+    below = `<p class="ftitle">${esc(it.titel)}</p><button class="back" data-back="packen">Doch nicht gepackt</button>`;
   } else {
     stage = `<div class="nophoto">Abgegeben${it.abgegeben_am ? " am " + esc(fmtDate(it.abgegeben_am)) : ""}</div>`;
     below = `<p class="ftitle">${esc(it.titel)}</p>`;
@@ -341,7 +342,7 @@ function closeDetail(){ openId = null; $("#detail").classList.remove("open"); }
 
 function flash(text, undo){
   $("#toastText").textContent = text; $("#undo").style.display = undo ? "" : "none"; undoInfo = undo || null;
-  $("#toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(()=>$("#toast").classList.remove("show"), 4000);
+  $("#toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(()=>$("#toast").classList.remove("show"), 7000);
 }
 
 async function load(){
@@ -393,6 +394,11 @@ document.addEventListener("click", e=>{
   const ph = e.target.closest("[data-photo]"); if(ph && openId){ photoIx[openId] = +ph.dataset.photo; renderDetail(); return; }
   const nv = e.target.closest("[data-nav]"); if(nv){ focusStep(+nv.dataset.nav); return; }
   if(e.target.closest("[data-act]")){ focusCheck(); return; }
+  const bk = e.target.closest("[data-back]");
+  if(bk && openId){ const id = openId, it = items.find(i=>i.id===id); const old = {status: it.status, abgegeben_am: it.abgegeben_am || ""};
+    const pos = shown.findIndex(i=>i.id===id); const nxt = shown[pos+1] || shown[pos-1];
+    openId = nxt ? nxt.id : null; if(!nxt) closeDetail();
+    flash("Zurück zu Packen", {id, patch:old}); save(id, {status: bk.dataset.back, abgegeben_am: ""}); return; }
   const sb = e.target.closest("[data-sort]");
   if(sb){ sortBy = sb.dataset.sort; try{localStorage.setItem("pakete-sort",sortBy)}catch(_){}; render(); return; }
   const tb = e.target.closest(".tab");
