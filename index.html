@@ -140,9 +140,10 @@
   .band.b-none{background:#fff3e6;color:var(--warn)}
   .card.b-DHL,.card.b-GLS,.card.b-DPD,.card.b-Hermes{}
   .fstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px 14px}
-  .photo{max-width:100%;max-height:100%;object-fit:contain;border-radius:14px;cursor:zoom-in}
-  .code{background:#fff;border-radius:16px;padding:16px;width:100%;max-width:440px;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
-  .code img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+  .photo{position:absolute;inset:8px 14px;width:calc(100% - 28px);height:calc(100% - 16px);object-fit:contain;border-radius:14px;cursor:zoom-in}
+  .fstage{position:relative;overflow:hidden}
+  .code{position:absolute;inset:12px 14px;display:flex;align-items:center;justify-content:center}
+  .code img{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:1;object-fit:contain;image-rendering:pixelated;background:#fff;border-radius:16px;padding:14px;box-sizing:border-box}
   .nophoto{color:var(--muted);font-size:18px}
   .fbelow{padding:0 18px 6px;text-align:center}
   .strip{display:flex;gap:8px;justify-content:center;margin-bottom:10px;overflow-x:auto}
@@ -325,7 +326,7 @@ function renderDetail(){
   $("#sheet").innerHTML = `
     <div class="ftop">
       <button class="fx" id="close" aria-label="Schließen">×</button>
-      ${it.status === "packen" ? "" : `<span class="nr fnr c-${car}">${esc(it.nr || "")}</span>`}
+      ${it.status === "packen" || it.status === "picken" ? "" : `<span class="nr fnr c-${car}">${esc(it.nr || "")}</span>`}
       <span class="fcount">${pos >= 0 && shown.length > 1 ? (pos+1) + " von " + shown.length : ""}</span>
     </div>
     ${band}
