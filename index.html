@@ -233,6 +233,7 @@ function render(){
   if(!list.length) box.innerHTML = `<div class="empty">${CHECK}<div>Nichts offen</div></div>`;
   else if(tab === "wegbringen"){
     const g = {}; for(const it of list){ const k = ORTE[it.versand] ? it.versand : "_"; (g[k] ||= []).push(it); }
+    shown = ["Hermes","DHL","GLS","DPD","_"].filter(k=>g[k]).flatMap(k=>g[k]);
     box.innerHTML = ["Hermes","DHL","GLS","DPD","_"].filter(k=>g[k]).map(k =>
       `<div class="group">${k==="_" ? "Versand noch offen" : `<span class="pill ${k}">${k}</span>${esc(ORTE[k])}`}</div>` + g[k].map(card).join("")).join("");
   } else box.innerHTML = list.map(card).join("");
