@@ -21,6 +21,10 @@
   .tab b{font-size:24px;line-height:1;color:inherit}
   .tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
   main{padding:4px 14px}
+  .sortbar{display:flex;gap:6px;padding:2px 14px 8px;overflow-x:auto}
+  .sortbar button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font:inherit;font-size:14px;font-weight:600;color:#6b6860;cursor:pointer;white-space:nowrap}
+  .sortbar button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  @media(min-width:700px){.sortbar{max-width:640px;margin:0 auto}}
   .group{margin:18px 2px 8px;font-size:14px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.04em}
   .card{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:10px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer}
   .thumbs{position:relative;width:64px;height:64px;flex:none}
@@ -125,6 +129,9 @@
     <button class="tab" data-tab="abgegeben"><b id="c-abgegeben">0</b>Abgegeben</button>
   </div>
 </header>
+<div class="sortbar" id="sortbar" style="display:none">
+  <button data-sort="frist">Frist</button><button data-sort="neu">Neueste</button><button data-sort="alt">Älteste</button><button data-sort="versand">Versand</button>
+</div>
 <main id="list"><div class="status">Lädt …</div></main>
 
 <div id="detail">
@@ -148,6 +155,8 @@ const STEPS = ["packen","wegbringen","abgegeben"];
 const STEP_LABEL = {packen:"Packen", wegbringen:"Wegbringen", abgegeben:"Abgegeben"};
 const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
+let sortBy = "frist";
+try { const v = localStorage.getItem("pakete-sort"); if(v) sortBy = v; } catch(e){}
 let items = [], tab = "packen", openId = null, key = "", busy = 0;
 let undoInfo = null, toastTimer = null;
 try { const t = localStorage.getItem("pakete-tab"); if (STEPS.includes(t)) tab = t; } catch(e){}
@@ -176,6 +185,9 @@ function toDay(v){
   if(isNaN(d)) return null; d.setHours(0,0,0,0); return d;
 }
 const ts = v => { const d = new Date(String(v||"")); return isNaN(d) ? 0 : d.getTime(); };
+const soldTs = it => { const m = String(it.id||"").match(/-(\d\d)(\d\d)$/); return m ? new Date(2026, +m[2]-1, +m[1]).getTime() : 0; };
+const CAR_ORDER = ["DHL","GLS","DPD","Hermes"];
+const carRank = it => { const i = CAR_ORDER.indexOf(it.versand); return i < 0 ? 9 : i; };
 const dayTs = v => { const d = toDay(v); return d ? d.getTime() : 9e15; };
 function fmtDate(iso){ const d = new Date(iso); return isNaN(d) ? "" : d.getDate()+"."+(d.getMonth()+1)+"."; }
 function thumbs(it){
@@ -187,11 +199,10 @@ function pill(v){ return ORTE[v] ? `<span class="pill ${v}">${v} · ${ORTE[v]}</
 function card(it){
   const nr = it.nr ? `<span class="nr c-${carOf(it)}">${esc(it.nr)}</span>` : "";
   let left = "", meta = "";
-  if(it.status === "packen"){
-    left = thumbs(it);
-  } else if(it.status === "wegbringen"){
+  if(it.status === "packen") left = thumbs(it);
+  if(it.status !== "abgegeben"){
     const due = dueText(it.frist);
-    if(due && due.c) meta = `<div class="meta"><span class="due ${due.c}">${due.t}</span></div>`;
+    if(due) meta = `<div class="meta"><span class="due ${due.c}">${due.t}</span></div>`;
   }
   return `<div class="card b-${carOf(it)} ${it.status==='abgegeben'?'done':''}" data-id="${esc(it.id)}">
     ${left}
@@ -202,9 +213,16 @@ function card(it){
 function render(){
   for(const s of STEPS) $("#c-"+s).textContent = items.filter(i=>i.status===s).length;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
-  const list = items.filter(i=>i.status===tab).sort((a,b)=> tab === "abgegeben"
-    ? ts(b.abgegeben_am) - ts(a.abgegeben_am)
-    : (dayTs(a.frist) - dayTs(b.frist)) || String(a.titel).localeCompare(String(b.titel)));
+  const byDue = (a,b) => (dayTs(a.frist) - dayTs(b.frist)) || String(a.nr).localeCompare(String(b.nr));
+  const cmp = tab === "abgegeben" ? (a,b) => ts(b.abgegeben_am) - ts(a.abgegeben_am)
+    : tab === "wegbringen" ? byDue
+    : sortBy === "neu" ? (a,b) => soldTs(b) - soldTs(a) || byDue(a,b)
+    : sortBy === "alt" ? (a,b) => soldTs(a) - soldTs(b) || byDue(a,b)
+    : sortBy === "versand" ? (a,b) => carRank(a) - carRank(b) || byDue(a,b)
+    : byDue;
+  const list = items.filter(i=>i.status===tab).sort(cmp);
+  $("#sortbar").style.display = tab === "packen" && list.length > 1 ? "" : "none";
+  document.querySelectorAll("#sortbar button").forEach(b=>b.classList.toggle("on", b.dataset.sort===sortBy));
   const box = $("#list");
   if(!list.length) box.innerHTML = `<div class="empty">${CHECK}<div>Nichts offen</div></div>`;
   else if(tab === "wegbringen"){
@@ -309,6 +327,8 @@ document.addEventListener("click", e=>{
   if(e.target.closest("#zoom")){ closeGal(); return; }
   const g = e.target.closest("[data-gal]");
   if(g){ openGal(g.dataset.gal, +(g.dataset.ix||0)); return; }
+  const sb = e.target.closest("[data-sort]");
+  if(sb){ sortBy = sb.dataset.sort; try{localStorage.setItem("pakete-sort",sortBy)}catch(_){}; render(); return; }
   const tb = e.target.closest(".tab");
   if(tb){ tab = tb.dataset.tab; try{localStorage.setItem("pakete-tab",tab)}catch(_){}; render(); window.scrollTo(0,0); return; }
   const chk = e.target.closest("[data-check]"); if(chk){ e.stopPropagation(); advance(chk.dataset.check); return; }
