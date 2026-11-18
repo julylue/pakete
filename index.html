@@ -54,7 +54,7 @@
   .sheet h2{font-size:21px;margin:4px 40px 12px 0}
   .teile{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
   .teil{display:flex;gap:12px;align-items:center}
-  .teil img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:#eee}
+  .teil img{width:120px;height:120px;object-fit:cover;border-radius:12px;background:#eee}
   .teil .ph{width:96px;height:96px}
   .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 8px}
   .carriers{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -67,6 +67,10 @@
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
   .step{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
   .step.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .zoom{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+  .zoom.show{display:flex}
+  .zoom img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+  .teil img{cursor:zoom-in}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px 12px 18px;display:flex;gap:14px;align-items:center;z-index:30;transition:transform .2s;font-size:16px;max-width:92vw}
   .toast.show{transform:translateX(-50%)}
   .toast button{border:0;background:#fff;color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
@@ -87,6 +91,7 @@
   <div class="scrim" id="scrim"></div>
   <div class="sheet" id="sheet"></div>
 </div>
+<div class="zoom" id="zoom"><img id="zoomImg" alt="" referrerpolicy="no-referrer"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="undo">Zurück</button></div>
 
 <script>
@@ -107,6 +112,7 @@ if(key && location.search){ try{ history.replaceState(null, "", location.pathnam
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img = id => /^[\w-]{10,}$/.test(String(id||"")) ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w400" : "";
+const bigImg = id => img(id).replace("sz=w400","sz=w1600");
 const teileOf = it => { try { const t = JSON.parse(it.teile || "[]"); return Array.isArray(t) ? t : []; } catch(e){ return []; } };
 
 function dueText(iso){
@@ -138,7 +144,7 @@ function card(it){
   return `<div class="card ${done?'done':''}" data-id="${esc(it.id)}">
     ${thumbs(it)}
     <div class="info"><div class="t">${esc(it.titel)}</div>
-      <div class="meta">${pill(it.versand)}${due ? `<span class="due ${due.c}">${due.t}</span>` : ""}${it.kiste ? `<span class="kiste">Kiste ${esc(it.kiste)}</span>` : ""}${done && it.abgegeben_am ? `<span class="due">${esc(fmtDate(it.abgegeben_am))}</span>` : ""}</div></div>
+      <div class="meta">${done && !ORTE[it.versand] ? "" : pill(it.versand)}${due ? `<span class="due ${due.c}">${due.t}</span>` : ""}${it.kiste ? `<span class="kiste">Kiste ${esc(it.kiste)}</span>` : ""}${done && it.abgegeben_am ? `<span class="due">${esc(fmtDate(it.abgegeben_am))}</span>` : ""}</div></div>
     <button class="check" data-check="${esc(it.id)}" aria-label="abhaken">${CHECK}</button>
   </div>`;
 }
@@ -162,7 +168,7 @@ function render(){
 function renderDetail(){
   const it = items.find(i=>i.id===openId); if(!it){ closeDetail(); return; }
   const teile = teileOf(it).map(t=>{ const src = img(t.bild);
-    return `<div class="teil">${src?`<img src="${src}" alt="" referrerpolicy="no-referrer">`:`<div class="ph">?</div>`}<div>${esc(t.name)}</div></div>`; }).join("");
+    return `<div class="teil">${src?`<img src="${src}" data-big="${bigImg(t.bild)}" alt="" referrerpolicy="no-referrer">`:`<div class="ph">?</div>`}<div>${esc(t.name)}</div></div>`; }).join("");
   const cars = Object.keys(ORTE).map(k => `<button class="car ${k} ${it.versand===k?'on':''}" data-car="${k}"><b>${k}</b><span>${ORTE[k]}</span></button>`).join("");
   const due = dueText(it.frist);
   const facts = [ it.kiste ? ["Kiste", esc(it.kiste)] : null, due ? ["Frist", due.t] : null, it.notiz ? ["Notiz", esc(it.notiz)] : null ]
@@ -217,6 +223,9 @@ async function advance(id){
 }
 
 document.addEventListener("click", e=>{
+  if(e.target.closest("#zoom")){ $("#zoom").classList.remove("show"); return; }
+  const big = e.target.closest("[data-big]");
+  if(big){ $("#zoomImg").src = big.dataset.big; $("#zoom").classList.add("show"); return; }
   const tb = e.target.closest(".tab");
   if(tb){ tab = tb.dataset.tab; try{localStorage.setItem("pakete-tab",tab)}catch(_){}; render(); window.scrollTo(0,0); return; }
   const chk = e.target.closest("[data-check]"); if(chk){ e.stopPropagation(); advance(chk.dataset.check); return; }
@@ -228,7 +237,7 @@ document.addEventListener("click", e=>{
   if(st && openId){ const s = st.dataset.step; save(openId, {status:s, abgegeben_am: s==="abgegeben" ? new Date().toISOString() : ""}); return; }
   if(e.target.id === "undo" && undoInfo){ const u = undoInfo; undoInfo = null; $("#toast").classList.remove("show"); save(u.id, u.patch); }
 });
-document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeDetail(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ if($("#zoom").classList.contains("show")) $("#zoom").classList.remove("show"); else closeDetail(); } });
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
 setInterval(()=>{ if(!document.hidden) load(); }, 20000);
 load();
