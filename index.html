@@ -67,6 +67,20 @@
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
   .step{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
   .step.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .big{margin:0 0 14px}
+  .big img{width:100%;max-height:62vh;object-fit:contain;background:#f3f1ec;border-radius:14px;display:block;cursor:zoom-in}
+  .big figcaption{font-size:15px;color:var(--muted);margin-top:6px}
+  .bigph{width:100%;height:200px;font-size:40px}
+  .where{display:flex;align-items:center;gap:10px;font-size:20px;margin:2px 0 14px}
+  .where .pill{font-size:15px;padding:5px 12px}
+  .qr{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;cursor:zoom-in}
+  .qr img{width:100%;display:block;image-rendering:pixelated}
+  .line{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line);font-size:17px}
+  .line span{color:var(--muted)}
+  .note{background:#f6f5f2;border-radius:12px;padding:10px 12px;margin:12px 0;font-size:15px}
+  .sel{width:100%;font:inherit;font-size:17px;font-weight:600;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);appearance:auto}
+  .zoom.white{background:#fff}
+  .zoom.white img{image-rendering:pixelated;width:100%;max-width:90vmin}
   .zoom{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
   .zoom.show{display:flex}
   .zoom img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
@@ -167,18 +181,28 @@ function render(){
 
 function renderDetail(){
   const it = items.find(i=>i.id===openId); if(!it){ closeDetail(); return; }
-  const teile = teileOf(it).map(t=>{ const src = img(t.bild);
-    return `<div class="teil">${src?`<img src="${src}" data-big="${bigImg(t.bild)}" alt="" referrerpolicy="no-referrer">`:`<div class="ph">?</div>`}<div>${esc(t.name)}</div></div>`; }).join("");
-  const cars = Object.keys(ORTE).map(k => `<button class="car ${k} ${it.versand===k?'on':''}" data-car="${k}"><b>${k}</b><span>${ORTE[k]}</span></button>`).join("");
   const due = dueText(it.frist);
-  const facts = [ it.kiste ? ["Kiste", esc(it.kiste)] : null, due ? ["Frist", due.t] : null, it.notiz ? ["Notiz", esc(it.notiz)] : null ]
-    .filter(Boolean).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("");
-  const steps = STEPS.map(s=>`<button class="step ${it.status===s?'on':''}" data-step="${s}">${STEP_LABEL[s]}</button>`).join("");
+  const teile = teileOf(it);
+  const opts = STEPS.map(s=>`<option value="${s}" ${it.status===s?'selected':''}>${STEP_LABEL[s]}</option>`).join("");
+  const status = `<label class="lbl" for="statusSel">Stand</label><select id="statusSel" class="sel">${opts}</select>`;
+  let body = "";
+  if(it.status === "packen"){
+    body = teile.map(t=>{ const src = img(t.bild);
+      return `<figure class="big">${src ? `<img src="${bigImg(t.bild)}" data-big="${bigImg(t.bild)}" alt="" referrerpolicy="no-referrer">` : `<div class="ph bigph">?</div>`}<figcaption>${esc(t.name)}</figcaption></figure>`; }).join("")
+      + (it.kiste ? `<div class="line"><span>Kiste</span><b>${esc(it.kiste)}</b></div>` : "")
+      + (it.notiz ? `<div class="note">${esc(it.notiz)}</div>` : "");
+  } else if(it.status === "wegbringen"){
+    const qr = img(it.qr) ? img(it.qr).replace("sz=w400","sz=w1200") : "";
+    body = `<div class="where">${ORTE[it.versand] ? `<span class="pill ${it.versand}">${it.versand}</span><b>${ORTE[it.versand]}</b>` : `<b>Abgabestelle noch offen</b>`}</div>`
+      + (qr ? `<div class="qr" data-qr="${qr}"><img src="${qr}" alt="Versand-Code" referrerpolicy="no-referrer"></div>` : `<div class="note">Kein Code vorhanden</div>`)
+      + (due ? `<div class="line"><span>Frist</span><b class="due ${due.c}">${due.t}</b></div>` : "")
+      + (it.notiz ? `<div class="note">${esc(it.notiz)}</div>` : "");
+  } else {
+    body = (it.abgegeben_am ? `<div class="line"><span>Abgegeben</span><b>${esc(fmtDate(it.abgegeben_am))}</b></div>` : "")
+      + (it.notiz ? `<div class="note">${esc(it.notiz)}</div>` : "");
+  }
   $("#sheet").innerHTML = `<div class="grab"></div><button class="x" id="close" aria-label="schließen">×</button>
-    <h2>${esc(it.titel)}</h2><div class="teile">${teile}</div>
-    <div class="lbl">Abgeben bei</div><div class="carriers">${cars}</div>
-    ${facts ? `<div class="lbl">Info</div><dl class="facts">${facts}</dl>` : ""}
-    <div class="lbl">Stand</div><div class="steps">${steps}</div>`;
+    <h2>${esc(it.titel)}</h2>${body}${status}`;
 }
 function openDetail(id){ openId = id; renderDetail(); $("#detail").classList.add("open"); }
 function closeDetail(){ openId = null; $("#detail").classList.remove("open"); }
@@ -223,19 +247,20 @@ async function advance(id){
 }
 
 document.addEventListener("click", e=>{
-  if(e.target.closest("#zoom")){ $("#zoom").classList.remove("show"); return; }
+  if(e.target.closest("#zoom")){ $("#zoom").classList.remove("show","white"); return; }
+  const qz = e.target.closest("[data-qr]");
+  if(qz){ $("#zoomImg").src = qz.dataset.qr; $("#zoom").classList.add("show","white"); return; }
   const big = e.target.closest("[data-big]");
-  if(big){ $("#zoomImg").src = big.dataset.big; $("#zoom").classList.add("show"); return; }
+  if(big){ $("#zoomImg").src = big.dataset.big; $("#zoom").classList.remove("white"); $("#zoom").classList.add("show"); return; }
   const tb = e.target.closest(".tab");
   if(tb){ tab = tb.dataset.tab; try{localStorage.setItem("pakete-tab",tab)}catch(_){}; render(); window.scrollTo(0,0); return; }
   const chk = e.target.closest("[data-check]"); if(chk){ e.stopPropagation(); advance(chk.dataset.check); return; }
   const c = e.target.closest(".card"); if(c){ openDetail(c.dataset.id); return; }
   if(e.target.id === "scrim" || e.target.closest("#close")){ closeDetail(); return; }
-  const car = e.target.closest("[data-car]");
-  if(car && openId){ const it = items.find(i=>i.id===openId); save(openId, {versand: it.versand===car.dataset.car ? "" : car.dataset.car}); return; }
-  const st = e.target.closest("[data-step]");
-  if(st && openId){ const s = st.dataset.step; save(openId, {status:s, abgegeben_am: s==="abgegeben" ? new Date().toISOString() : ""}); return; }
   if(e.target.id === "undo" && undoInfo){ const u = undoInfo; undoInfo = null; $("#toast").classList.remove("show"); save(u.id, u.patch); }
+});
+document.addEventListener("change", e=>{
+  if(e.target.id === "statusSel" && openId){ const v = e.target.value; save(openId, {status:v, abgegeben_am: v==="abgegeben" ? new Date().toISOString() : ""}); }
 });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ if($("#zoom").classList.contains("show")) $("#zoom").classList.remove("show"); else closeDetail(); } });
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
