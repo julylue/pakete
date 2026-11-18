@@ -178,10 +178,52 @@
   .zoom{background:#000}
   .toast{visibility:hidden}.toast.show{visibility:visible}
   #detail.open ~ .toast{bottom:calc(100px + env(safe-area-inset-bottom))}
+
+  /* Überblick (nur July) */
+  .modes{display:flex;gap:4px;margin:12px 14px 0;background:#ebe8e2;border-radius:12px;padding:4px}
+  .modes button{flex:1;border:0;background:none;border-radius:9px;padding:9px;font:inherit;font-size:15px;font-weight:700;color:#6b6860;cursor:pointer}
+  .modes button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  #dash{padding:6px 16px 40px}
+  .hero{padding:18px 2px 10px}
+  .hero .k{margin:0;color:var(--muted);font-size:15px}
+  .hero .big{margin:2px 0 4px;font-size:clamp(44px,13vw,60px);font-weight:800;letter-spacing:-.03em;line-height:1}
+  .hero .sub{margin:0;color:#4a4740;font-size:15px}
+  .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:14px 0 10px}
+  .fl{border:0;background:#fff;border-radius:12px;padding:10px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;cursor:pointer;color:var(--ink)}
+  .fl b{font-size:22px}.fl span{font-size:11.5px;color:var(--muted)}
+  .fl:not([data-goto]){background:none;cursor:default}
+  .tips{list-style:none;margin:6px 0 4px;padding:0;display:flex;flex-direction:column;gap:6px}
+  .tips li{background:#fff3e6;color:#8a4b12;border-radius:12px;padding:10px 12px;font-size:15px;font-weight:600}
+  #dash h3{font-size:17px;margin:26px 0 10px}
+  .bars{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;height:120px;align-items:end;background:#fff;border-radius:14px;padding:10px 10px 22px}
+  .bar{height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative}
+  .bar span{display:block;background:var(--ink);border-radius:4px 4px 0 0;min-height:0}
+  .bar em{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--muted)}
+  .heat{display:grid;grid-template-columns:64px repeat(7,1fr);gap:4px;background:#fff;border-radius:14px;padding:10px}
+  .heat b{font-size:12px;color:var(--muted);text-align:center;font-weight:600}
+  .heat b.rl{text-align:left;align-self:center}
+  .heat i{aspect-ratio:1;border-radius:7px;background:rgba(31,138,76,var(--a));display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;font-weight:700;color:#fff;outline:1px solid #efece6}
+  .note{font-size:14px;color:var(--muted);margin:8px 2px 0}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .pair div{background:#fff;border-radius:14px;padding:12px}
+  .pair b{display:block;font-size:22px}
+  .pair span{font-size:13.5px;color:var(--muted)}
+  #dash details{background:#fff;border-radius:14px;margin-top:12px;padding:0 12px}
+  #dash summary{padding:14px 0;font-weight:700;font-size:16px;cursor:pointer;display:flex;justify-content:space-between}
+  #dash summary span{color:var(--muted);font-weight:600}
+  .rows{list-style:none;margin:0 0 10px;padding:0}
+  .rows li{display:grid;grid-template-columns:78px 1fr auto;gap:8px;padding:9px 0;border-top:1px solid #f0ede7;font-size:14.5px;align-items:baseline}
+  .rows .dt{color:var(--muted);font-variant-numeric:tabular-nums}
+  .rows i{font-style:normal;font-size:12px;color:var(--muted)}
+  @media(min-width:700px){#dash,.modes{max-width:640px;margin-left:auto;margin-right:auto}}
 </style>
 </head>
 <body>
-<header>
+<nav class="modes" id="modes" hidden>
+  <button data-mode="dash" class="on">Überblick</button><button data-mode="pakete">Pakete</button>
+</nav>
+<section id="dash" hidden></section>
+<header id="pakhead">
   <div class="tabs" role="tablist">
     <button class="tab on" data-tab="picken"><b id="c-picken">0</b>Picken</button>
     <button class="tab" data-tab="packen"><b id="c-packen">0</b>Packen</button>
@@ -276,7 +318,7 @@ function render(){
     : byDue;
   const list = items.filter(i=>i.status===tab).sort(cmp);
   shown = list;
-  $("#sortbar").style.display = (tab === "picken" || tab === "packen") && list.length > 1 ? "" : "none";
+  $("#sortbar").style.display = (!owner || mode !== "dash") && (tab === "picken" || tab === "packen") && list.length > 1 ? "" : "none";
   document.querySelectorAll("#sortbar button").forEach(b=>b.classList.toggle("on", b.dataset.sort===sortBy));
   const box = $("#list");
   if(!list.length) box.innerHTML = `<div class="empty">${CHECK}<div>Nichts offen</div></div>`;
@@ -366,6 +408,104 @@ function flash(text, undo){
   $("#toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(()=>$("#toast").classList.remove("show"), 7000);
 }
 
+let stock = [], owner = false, mode = "dash";
+try { const m = localStorage.getItem("pakete-mode"); if(m) mode = m; } catch(e){}
+const eur = n => (Math.round(n*100)/100).toLocaleString("de-DE",{minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits:2}) + " €";
+const num = v => { const n = parseFloat(String(v).replace(",", ".").replace(/[^\d.\-]/g,"")); return isNaN(n) ? 0 : n; };
+const WD = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+const SLOTS = [["Nacht",0,6],["Morgen",6,12],["Mittag",12,18],["Abend",18,24]];
+function hasTime(v){ return /T\d\d:\d\d/.test(String(v)) && !/T00:00:00$/.test(String(v)); }
+function applyMode(){
+  if(!owner){ $("#modes").hidden = true; $("#dash").hidden = true; $("#pakhead").hidden = false; $("#list").hidden = false; return; }
+  $("#modes").hidden = false;
+  document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on", b.dataset.mode===mode));
+  const d = mode === "dash";
+  $("#dash").hidden = !d; $("#pakhead").hidden = d; $("#list").hidden = d;
+  if(d) $("#sortbar").style.display = "none"; else render();
+}
+function renderDash(){
+  if(!owner){ applyMode(); return; }
+  const sales = items.filter(i=>num(i.preis) > 0).map(i=>({...i, p:num(i.preis), t:new Date(String(i.verkauft_am).length===10 ? i.verkauft_am+"T12:00:00" : i.verkauft_am)}))
+    .filter(s=>!isNaN(s.t)).sort((a,b)=>b.t-a.t);
+  const total = sales.reduce((a,s)=>a+s.p,0);
+  const now = new Date(); const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const month = sales.filter(s=>s.t>=mStart).reduce((a,s)=>a+s.p,0);
+  const first = sales.length ? sales[sales.length-1].t : null;
+  const live = stock.filter(s=>s.status==="live");
+  const cnt = st => items.filter(i=>i.status===st).length;
+
+  // Hinweise (max. 3)
+  const tips = [];
+  const open = items.filter(i=>i.status!=="abgegeben");
+  const soon = open.map(i=>({i, d:dayTs(i.frist)})).filter(x=>x.d<9e15).sort((a,b)=>a.d-b.d);
+  if(soon.length){ const d0 = soon[0].d; const n = soon.filter(x=>x.d===d0).length; const dt = dueText(soon[0].i.frist);
+    tips.push(dt.t === "überfällig" ? `${n} ${n===1?"Paket ist":"Pakete sind"} überfällig` : `${n} ${n===1?"Paket muss":"Pakete müssen"} ${dt.t} weg`); }
+  const noCode = open.filter(i=>!i.qr && i.status!=="abgegeben");
+  if(noCode.length) tips.push(`${noCode.map(i=>esc(i.nr||i.titel)).join(", ")}: Versand-Code fehlt`);
+  const old = live.map(s=>({s, d:(now - new Date(s.eingestellt))/864e5})).filter(x=>x.s.eingestellt && x.d>=14);
+  if(old.length) tips.push(`${old.length} Teile seit über 2 Wochen online ohne Verkauf`);
+
+  // Umsatz pro Tag (14 Tage)
+  const days = []; for(let k=13;k>=0;k--){ const d = new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate()-k); days.push(d); }
+  const perDay = days.map(d=>{ const e = new Date(d); e.setDate(e.getDate()+1); const ss = sales.filter(s=>s.t>=d && s.t<e); return {d, sum:ss.reduce((a,s)=>a+s.p,0), n:ss.length}; });
+  const maxD = Math.max(1, ...perDay.map(x=>x.sum));
+  const bars = perDay.map((x,i)=>{ const h = Math.round(x.sum/maxD*100);
+    return `<div class="bar" title="${x.d.getDate()}.${x.d.getMonth()+1}.: ${eur(x.sum)}"><span style="height:${h}%"></span><em>${i%2===0 || i===13 ? x.d.getDate()+"." : ""}</em></div>`; }).join("");
+
+  // Wann verkauft (Wochentag x Tageszeit)
+  const timed = sales.filter(s=>hasTime(s.verkauft_am));
+  const grid = SLOTS.map(()=>WD.map(()=>0));
+  timed.forEach(s=>{ const wd = (s.t.getDay()+6)%7; const h = s.t.getHours(); const r = SLOTS.findIndex(x=>h>=x[1] && h<x[2]); grid[r][wd]++; });
+  const gmax = Math.max(1, ...grid.flat());
+  const heat = `<div class="heat"><span></span>${WD.map(w=>`<b>${w}</b>`).join("")}${SLOTS.map((sl,r)=>`<b class="rl">${sl[0]}</b>${WD.map((w,c)=>{ const v = grid[r][c];
+      return `<i style="--a:${v? .18 + .82*v/gmax : 0}" title="${w} ${sl[0]}: ${v}">${v||""}</i>`; }).join("")}`).join("")}</div>`;
+  const wdTot = WD.map((w,c)=>grid.reduce((a,row)=>a+row[c],0)); const bestWd = wdTot.indexOf(Math.max(...wdTot));
+  const slTot = grid.map(row=>row.reduce((a,b)=>a+b,0)); const bestSl = slTot.indexOf(Math.max(...slTot));
+
+  // Verkaufsdauer + Nachlass
+  const withList = sales.filter(s=>num(s.einstellpreis)>0);
+  const listSum = withList.reduce((a,s)=>a+num(s.einstellpreis),0), soldSum = withList.reduce((a,s)=>a+s.p,0);
+  const disc = listSum ? Math.round((1 - soldSum/listSum)*100) : null;
+  const dur = sales.filter(s=>s.eingestellt_am).map(s=>Math.max(0,(s.t - new Date(String(s.eingestellt_am).slice(0,10)+"T00:00:00"))/864e5));
+  const avgDur = dur.length ? dur.reduce((a,b)=>a+b,0)/dur.length : null;
+  const byCat = {}; sales.forEach(s=>{ const c = s.kategorie || "Andere"; (byCat[c] ||= {sum:0,n:0}); byCat[c].sum += s.p; byCat[c].n++; });
+
+  // Ladenhüter
+  const shelf = live.map(s=>({s, d:Math.floor((now - new Date(s.eingestellt))/864e5)})).filter(x=>x.s.eingestellt && !isNaN(x.d)).sort((a,b)=>b.d-a.d).slice(0,12);
+
+  const steps = [["Online", live.length, null],["Picken", cnt("picken"), "picken"],["Packen", cnt("packen"), "packen"],["Wegbringen", cnt("wegbringen"), "wegbringen"],["Abgegeben", cnt("abgegeben"), "abgegeben"]];
+
+  $("#dash").innerHTML = `
+  <div class="hero">
+    <p class="k">Umsatz bisher</p>
+    <p class="big">${eur(total)}</p>
+    <p class="sub">${sales.length} Verkäufe${first ? " seit " + first.getDate() + "." + (first.getMonth()+1) + "." : ""} · diesen Monat ${eur(month)}</p>
+  </div>
+  <div class="flow">${steps.map(([l,n,t])=>`<button class="fl" ${t?`data-goto="${t}"`:""}><b>${n}</b><span>${l}</span></button>`).join("")}</div>
+  ${tips.length ? `<ul class="tips">${tips.slice(0,3).map(t=>`<li>${t}</li>`).join("")}</ul>` : ""}
+
+  <h3>Umsatz der letzten 14 Tage</h3>
+  <div class="bars">${bars}</div>
+
+  <h3>Wann verkauft wird</h3>
+  ${heat}
+  <p class="note">${timed.length ? `Bisher am meisten: ${["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][bestWd]}, ${SLOTS[bestSl][0].toLowerCase()}. ` : ""}Basis: ${timed.length} Verkäufe mit Uhrzeit. Ein verlässliches Muster zeigt sich erst ab etwa 30.</p>
+
+  <div class="pair">
+    <div><b>${avgDur===null ? "–" : (avgDur<1 ? "unter 1" : avgDur.toFixed(1).replace(".",","))} ${avgDur!==null && avgDur>=1 && avgDur<2 ? "Tag" : "Tage"}</b><span>vom Einstellen bis zum Verkauf (${dur.length} Verkäufe)</span></div>
+    <div><b>${disc===null ? "–" : disc + " %"}</b><span>unter Einstellpreis verkauft (${withList.length} Verkäufe)</span></div>
+  </div>
+  <div class="pair">${Object.entries(byCat).map(([c,v])=>`<div><b>${eur(v.sum)}</b><span>${esc(c)}, ${v.n} Verkäufe</span></div>`).join("")}</div>
+
+  <details><summary>Alle Verkäufe <span>${sales.length}</span></summary>
+    <ul class="rows">${sales.map(s=>`<li><span class="dt">${s.t.getDate()}.${s.t.getMonth()+1}.${hasTime(s.verkauft_am) ? " " + String(s.t.getHours()).padStart(2,"0") + ":" + String(s.t.getMinutes()).padStart(2,"0") : ""}</span><span class="nm">${esc(s.titel)}${s.kanal && s.kanal!=="Vinted" ? ` <i>${esc(s.kanal)}</i>` : ""}</span><b>${eur(s.p)}</b></li>`).join("")}</ul>
+  </details>
+  <details><summary>Am längsten online <span>${live.length} live</span></summary>
+    <ul class="rows">${shelf.map(x=>`<li><span class="dt">${x.d} T.</span><span class="nm">${esc(x.s.artikel)}</span><b>${eur(num(x.s.preis))}</b></li>`).join("")}</ul>
+  </details>`;
+  applyMode();
+}
+
 async function load(){
   if(!key){
     $("#list").innerHTML = `<form class="keyform" id="keyform"><div class="status">Link einfügen</div>
@@ -379,10 +519,10 @@ async function load(){
   }
   if(busy) return;
   try {
-    const r = await fetch(API + "?k=" + encodeURIComponent(key), {cache:"no-store"});
+    const r = await fetch(API + "?k=" + encodeURIComponent(key) + "&dash=1", {cache:"no-store"});
     const j = await r.json();
     if(!j.ok){ try{ localStorage.removeItem("pakete-key"); }catch(e){} key = ""; load(); flash("Link ungültig"); return; }
-    if(!busy){ items = j.items; render(); }
+    if(!busy){ items = j.items; if(j.stock){ stock = j.stock; owner = true; } render(); renderDash(); }
   } catch(e){ if(!items.length) $("#list").innerHTML = '<div class="status">Keine Verbindung</div>'; }
 }
 
@@ -421,6 +561,10 @@ document.addEventListener("click", e=>{
     const pos = shown.findIndex(i=>i.id===id); const nxt = shown[pos+1] || shown[pos-1];
     openId = nxt ? nxt.id : null; if(!nxt) closeDetail();
     flash("Zurück zu " + STEP_LABEL[bk.dataset.back], {id, patch:old}); save(id, {status: bk.dataset.back, abgegeben_am: ""}); return; }
+  const md = e.target.closest("[data-mode]");
+  if(md){ mode = md.dataset.mode; try{localStorage.setItem("pakete-mode",mode)}catch(_){}; applyMode(); window.scrollTo(0,0); return; }
+  const gt = e.target.closest("[data-goto]");
+  if(gt){ mode = "pakete"; tab = gt.dataset.goto; try{localStorage.setItem("pakete-mode",mode); localStorage.setItem("pakete-tab",tab)}catch(_){}; applyMode(); render(); window.scrollTo(0,0); return; }
   const sb = e.target.closest("[data-sort]");
   if(sb){ sortBy = sb.dataset.sort; try{localStorage.setItem("pakete-sort",sortBy)}catch(_){}; render(); return; }
   const tb = e.target.closest(".tab");
