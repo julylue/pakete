@@ -199,7 +199,7 @@
   .bar{height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative}
   .bar span{display:block;background:var(--ink);border-radius:4px 4px 0 0;min-height:0}
   .bar em{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--muted)}
-  .heat{display:grid;grid-template-columns:64px repeat(7,1fr);gap:4px;background:#fff;border-radius:14px;padding:10px}
+  .heat{display:grid;grid-template-columns:86px repeat(7,1fr);gap:4px;background:#fff;border-radius:14px;padding:10px}
   .heat b{font-size:12px;color:var(--muted);text-align:center;font-weight:600}
   .heat b.rl{text-align:left;align-self:center}
   .heat i{aspect-ratio:1;border-radius:7px;background:rgba(31,138,76,var(--a));display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;font-weight:700;color:#fff;outline:1px solid #efece6}
@@ -413,7 +413,7 @@ try { const m = localStorage.getItem("pakete-mode"); if(m) mode = m; } catch(e){
 const eur = n => (Math.round(n*100)/100).toLocaleString("de-DE",{minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits:2}) + " €";
 const num = v => { const n = parseFloat(String(v).replace(",", ".").replace(/[^\d.\-]/g,"")); return isNaN(n) ? 0 : n; };
 const WD = ["Mo","Di","Mi","Do","Fr","Sa","So"];
-const SLOTS = [["Nacht",0,6],["Morgen",6,12],["Mittag",12,18],["Abend",18,24]];
+const SLOTS = [["Nachts",0,6],["Vormittags",6,12],["Nachmittags",12,18],["Abends",18,24]];
 function hasTime(v){ return /T\d\d:\d\d/.test(String(v)) && !/T00:00:00$/.test(String(v)); }
 function applyMode(){
   if(!owner){ $("#modes").hidden = true; $("#dash").hidden = true; $("#pakhead").hidden = false; $("#list").hidden = false; return; }
@@ -489,10 +489,10 @@ function renderDash(){
 
   <h3>Wann verkauft wird</h3>
   ${heat}
-  <p class="note">${timed.length ? `Bisher am meisten: ${["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][bestWd]}, ${SLOTS[bestSl][0].toLowerCase()}. ` : ""}Basis: ${timed.length} Verkäufe mit Uhrzeit. Ein verlässliches Muster zeigt sich erst ab etwa 30.</p>
+  <p class="note">${timed.length ? `Bisher am meisten am ${["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][bestWd]} und ${SLOTS[bestSl][0].toLowerCase()}. ` : ""}Basis: ${timed.length} Verkäufe mit Uhrzeit. Ein verlässliches Muster zeigt sich erst ab etwa 30.</p>
 
   <div class="pair">
-    <div><b>${avgDur===null ? "–" : (avgDur<1 ? "unter 1" : avgDur.toFixed(1).replace(".",","))} ${avgDur!==null && avgDur>=1 && avgDur<2 ? "Tag" : "Tage"}</b><span>vom Einstellen bis zum Verkauf (${dur.length} Verkäufe)</span></div>
+    <div><b>${avgDur===null ? "–" : (avgDur<1 ? "unter 1" : avgDur.toFixed(1).replace(".",","))} ${avgDur!==null && avgDur.toFixed(1)==="1.0" ? "Tag" : "Tage"}</b><span>vom Einstellen bis zum Verkauf (${dur.length} Verkäufe)</span></div>
     <div><b>${disc===null ? "–" : disc + " %"}</b><span>unter Einstellpreis verkauft (${withList.length} Verkäufe)</span></div>
   </div>
   <div class="pair">${Object.entries(byCat).map(([c,v])=>`<div><b>${eur(v.sum)}</b><span>${esc(c)}, ${v.n} Verkäufe</span></div>`).join("")}</div>
