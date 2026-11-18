@@ -81,6 +81,30 @@
   .line span{color:var(--muted)}
   .note{background:#f6f5f2;border-radius:12px;padding:10px 12px;margin:12px 0;font-size:15px}
   .sel{margin-top:16px;width:100%;font:inherit;font-size:17px;font-weight:600;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);appearance:auto}
+  .zoom{flex-direction:column}
+  .ztop{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:14px 16px;color:#fff;font-weight:700}
+  .zoom.white .ztop{color:var(--ink)}
+  .ztop .nr{font-size:18px;padding:3px 10px;margin:0}
+  .zx{margin-left:auto;border:0;background:rgba(255,255,255,.2);color:inherit;width:40px;height:40px;border-radius:50%;font-size:22px;cursor:pointer}
+  .zoom.white .zx{background:#eee}
+  .zarr{position:absolute;top:50%;transform:translateY(-50%);border:0;background:rgba(255,255,255,.18);color:#fff;width:52px;height:72px;border-radius:12px;font-size:40px;line-height:1;cursor:pointer}
+  .zoom.white .zarr{background:#eee;color:var(--ink)}
+  .zprev{left:8px}.znext{right:8px}
+  .zcap{position:absolute;bottom:18px;left:16px;right:16px;text-align:center;color:#fff;font-size:16px}
+  .zoom.white .zcap{color:var(--ink)}
+  .zoom img{max-height:78vh}
+  /* Versandfarben */
+  .nr.c-DHL,.nrbig.c-DHL{background:var(--dhl);color:#222}
+  .nr.c-GLS,.nrbig.c-GLS{background:var(--gls);color:#fff}
+  .nr.c-DPD,.nrbig.c-DPD{background:var(--dpd);color:#fff}
+  .nr.c-Hermes,.nrbig.c-Hermes{background:var(--hermes);color:#fff}
+  .card.b-DHL{border-left:6px solid var(--dhl)}
+  .card.b-GLS{border-left:6px solid var(--gls)}
+  .card.b-DPD{border-left:6px solid var(--dpd)}
+  .card.b-Hermes{border-left:6px solid var(--hermes)}
+  .group .pill{margin-right:4px}
+  .where{display:flex;align-items:center;gap:10px}
+  .where .pill{font-size:15px;padding:4px 11px}
   .zoom.white{background:#fff}
   .zoom.white img{image-rendering:pixelated;width:100%;max-width:90vmin}
   .zoom{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
@@ -107,7 +131,12 @@
   <div class="scrim" id="scrim"></div>
   <div class="sheet" id="sheet"></div>
 </div>
-<div class="zoom" id="zoom"><img id="zoomImg" alt="" referrerpolicy="no-referrer"></div>
+<div class="zoom" id="zoom">
+  <div class="ztop"><span id="zLabel" class="nr"></span><span id="zCount"></span><button class="zx" id="zClose" aria-label="schließen">×</button></div>
+  <img id="zoomImg" alt="" referrerpolicy="no-referrer">
+  <button class="zarr zprev" id="zPrev" aria-label="zurück">‹</button><button class="zarr znext" id="zNext" aria-label="weiter">›</button>
+  <div class="zcap" id="zCap"></div>
+</div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="undo">Zurück</button></div>
 
 <script>
@@ -128,6 +157,7 @@ if(key && location.search){ try{ history.replaceState(null, "", location.pathnam
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const img = id => /^[\w-]{10,}$/.test(String(id||"")) ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w400" : "";
+const carOf = it => ORTE[it.versand] ? it.versand : "none";
 const bigImg = id => img(id).replace("sz=w400","sz=w1600");
 const teileOf = it => { try { const t = JSON.parse(it.teile || "[]"); return Array.isArray(t) ? t : []; } catch(e){ return []; } };
 
@@ -155,7 +185,7 @@ function thumbs(it){
 function pill(v){ return ORTE[v] ? `<span class="pill ${v}">${v} · ${ORTE[v]}</span>` : `<span class="pill none">Versand?</span>`; }
 
 function card(it){
-  const nr = it.nr ? `<span class="nr">${esc(it.nr)}</span>` : "";
+  const nr = it.nr ? `<span class="nr c-${carOf(it)}">${esc(it.nr)}</span>` : "";
   let left = "", meta = "";
   if(it.status === "packen"){
     left = thumbs(it);
@@ -163,7 +193,7 @@ function card(it){
     const due = dueText(it.frist);
     if(due && due.c) meta = `<div class="meta"><span class="due ${due.c}">${due.t}</span></div>`;
   }
-  return `<div class="card ${it.status==='abgegeben'?'done':''}" data-id="${esc(it.id)}">
+  return `<div class="card b-${carOf(it)} ${it.status==='abgegeben'?'done':''}" data-id="${esc(it.id)}">
     ${left}
     <div class="info">${nr}<div class="t">${esc(it.titel)}</div>${meta}</div>
     <button class="check" data-check="${esc(it.id)}" aria-label="abhaken">${CHECK}</button>
@@ -180,7 +210,7 @@ function render(){
   else if(tab === "wegbringen"){
     const g = {}; for(const it of list){ const k = ORTE[it.versand] ? it.versand : "_"; (g[k] ||= []).push(it); }
     box.innerHTML = ["Hermes","DHL","GLS","DPD","_"].filter(k=>g[k]).map(k =>
-      `<div class="group">${k==="_" ? "Versand noch offen" : esc(ORTE[k]) + " · " + k}</div>` + g[k].map(card).join("")).join("");
+      `<div class="group">${k==="_" ? "Versand noch offen" : `<span class="pill ${k}">${k}</span>${esc(ORTE[k])}`}</div>` + g[k].map(card).join("")).join("");
   } else box.innerHTML = list.map(card).join("");
   if(openId) renderDetail();
 }
@@ -190,16 +220,47 @@ function renderDetail(){
   const opts = STEPS.map(s=>`<option value="${s}" ${it.status===s?'selected':''}>${STEP_LABEL[s]}</option>`).join("");
   let body = "";
   if(it.status === "packen"){
-    body = teileOf(it).map(t=>{ const src = img(t.bild);
-      return `<figure class="big">${src ? `<img src="${bigImg(t.bild)}" data-big="${bigImg(t.bild)}" alt="" referrerpolicy="no-referrer">` : `<div class="ph bigph">?</div>`}<figcaption>${esc(t.name)}</figcaption></figure>`; }).join("");
+    body = teileOf(it).map((t,ix)=>{ const src = img(t.bild);
+      return `<figure class="big">${src ? `<img src="${bigImg(t.bild)}" data-gal="photos" data-ix="${ix}" alt="" referrerpolicy="no-referrer">` : `<div class="ph bigph">?</div>`}<figcaption>${esc(t.name)}</figcaption></figure>`; }).join("");
   } else if(it.status === "wegbringen"){
     const qr = img(it.qr) ? img(it.qr).replace("sz=w400","sz=w1200") : "";
-    body = `<div class="where">${ORTE[it.versand] ? esc(ORTE[it.versand]) : "Abgabestelle offen"}</div>`
-      + (qr ? `<div class="qr" data-qr="${qr}"><img src="${qr}" alt="Versand-Code" referrerpolicy="no-referrer"></div>` : `<div class="note">Code fehlt noch</div>`);
+    body = `<div class="where">${ORTE[it.versand] ? `<span class="pill ${it.versand}">${it.versand}</span>${esc(ORTE[it.versand])}` : "Abgabestelle offen"}</div>`
+      + (qr ? `<div class="qr" data-gal="codes"><img src="${qr}" alt="Versand-Code" referrerpolicy="no-referrer"></div>` : `<div class="note">Code fehlt noch</div>`);
   }
   $("#sheet").innerHTML = `<div class="grab"></div><button class="x" id="close" aria-label="schließen">×</button>
-    <div class="nrbig">${esc(it.nr || it.titel)}</div>${body}<select id="statusSel" class="sel">${opts}</select>`;
+    <div class="nrbig c-${carOf(it)}">${esc(it.nr || it.titel)}</div>${body}<select id="statusSel" class="sel">${opts}</select>`;
 }
+let gal = [], galIx = 0;
+function openGal(kind, ix){
+  const it = items.find(i=>i.id===openId); if(!it) return;
+  if(kind === "photos"){
+    gal = teileOf(it).filter(t=>img(t.bild)).map(t=>({src:bigImg(t.bild), label:it.nr||"", car:carOf(it), cap:t.name, white:false}));
+    galIx = Math.min(ix, gal.length-1);
+  } else {
+    // alle Codes für dieselbe Abgabestelle, die noch wegmüssen
+    const same = items.filter(i=>i.status==="wegbringen" && i.versand===it.versand && img(i.qr)).sort((a,b)=>String(a.nr).localeCompare(String(b.nr)));
+    gal = same.map(i=>({src:img(i.qr).replace("sz=w400","sz=w1200"), label:i.nr||"", car:carOf(i), cap:i.titel, white:true}));
+    galIx = Math.max(0, same.findIndex(i=>i.id===it.id));
+  }
+  if(!gal.length) return;
+  showGal(); $("#zoom").classList.add("show");
+}
+function showGal(){
+  const g = gal[galIx];
+  $("#zoomImg").src = g.src;
+  $("#zoom").classList.toggle("white", g.white);
+  $("#zLabel").textContent = g.label; $("#zLabel").className = "nr c-" + g.car; $("#zLabel").style.display = g.label ? "" : "none";
+  $("#zCount").textContent = gal.length > 1 ? (galIx+1) + " / " + gal.length : "";
+  $("#zCap").textContent = g.cap || "";
+  $("#zPrev").style.display = $("#zNext").style.display = gal.length > 1 ? "" : "none";
+}
+function galStep(d){ if(gal.length < 2) return; galIx = (galIx + d + gal.length) % gal.length; showGal(); }
+function closeGal(){ $("#zoom").classList.remove("show","white"); gal = []; }
+(function(){ let x0 = null;
+  document.addEventListener("touchstart", e=>{ if($("#zoom").classList.contains("show")) x0 = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener("touchend", e=>{ if(x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if(Math.abs(dx) > 40){ galStep(dx < 0 ? 1 : -1); e.preventDefault(); } }, {passive:false});
+})();
 function openDetail(id){ openId = id; renderDetail(); $("#detail").classList.add("open"); }
 function closeDetail(){ openId = null; $("#detail").classList.remove("open"); }
 
@@ -243,11 +304,11 @@ async function advance(id){
 }
 
 document.addEventListener("click", e=>{
-  if(e.target.closest("#zoom")){ $("#zoom").classList.remove("show","white"); return; }
-  const qz = e.target.closest("[data-qr]");
-  if(qz){ $("#zoomImg").src = qz.dataset.qr; $("#zoom").classList.add("show","white"); return; }
-  const big = e.target.closest("[data-big]");
-  if(big){ $("#zoomImg").src = big.dataset.big; $("#zoom").classList.remove("white"); $("#zoom").classList.add("show"); return; }
+  if(e.target.closest("#zPrev")){ galStep(-1); return; }
+  if(e.target.closest("#zNext")){ galStep(1); return; }
+  if(e.target.closest("#zoom")){ closeGal(); return; }
+  const g = e.target.closest("[data-gal]");
+  if(g){ openGal(g.dataset.gal, +(g.dataset.ix||0)); return; }
   const tb = e.target.closest(".tab");
   if(tb){ tab = tb.dataset.tab; try{localStorage.setItem("pakete-tab",tab)}catch(_){}; render(); window.scrollTo(0,0); return; }
   const chk = e.target.closest("[data-check]"); if(chk){ e.stopPropagation(); advance(chk.dataset.check); return; }
@@ -258,7 +319,10 @@ document.addEventListener("click", e=>{
 document.addEventListener("change", e=>{
   if(e.target.id === "statusSel" && openId){ const v = e.target.value; save(openId, {status:v, abgegeben_am: v==="abgegeben" ? new Date().toISOString() : ""}); }
 });
-document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ if($("#zoom").classList.contains("show")) $("#zoom").classList.remove("show"); else closeDetail(); } });
+document.addEventListener("keydown", e=>{ const zo = $("#zoom").classList.contains("show");
+  if(e.key==="Escape"){ if(zo) closeGal(); else closeDetail(); }
+  if(zo && e.key==="ArrowRight") galStep(1);
+  if(zo && e.key==="ArrowLeft") galStep(-1); });
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
 setInterval(()=>{ if(!document.hidden) load(); }, 20000);
 load();
