@@ -325,7 +325,7 @@ function renderDetail(){
   $("#sheet").innerHTML = `
     <div class="ftop">
       <button class="fx" id="close" aria-label="Schließen">×</button>
-      <span class="nr fnr c-${car}">${esc(it.nr || "")}</span>
+      ${it.status === "packen" ? "" : `<span class="nr fnr c-${car}">${esc(it.nr || "")}</span>`}
       <span class="fcount">${pos >= 0 && shown.length > 1 ? (pos+1) + " von " + shown.length : ""}</span>
     </div>
     ${band}
