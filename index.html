@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-title" content="Pakete">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-512.png">
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f6f5f2">
 <title>Pakete</title>
 <style>
@@ -25,6 +24,9 @@
   .tab b{font-size:24px;line-height:1;color:inherit}
   .tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
   main{padding:4px 14px}
+  .keyform{display:flex;flex-direction:column;gap:10px;padding:40px 6px}
+  .keyform input{font:inherit;font-size:16px;padding:14px;border:2px solid var(--line);border-radius:12px;background:#fff}
+  .keyform button{font:inherit;font-weight:700;padding:14px;border:0;border-radius:12px;background:var(--ink);color:#fff}
   .sortbar{display:flex;gap:6px;padding:2px 14px 8px;overflow-x:auto}
   .sortbar button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font:inherit;font-size:14px;font-weight:600;color:#6b6860;cursor:pointer;white-space:nowrap}
   .sortbar button.on{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -291,12 +293,21 @@ function flash(text, undo){
 }
 
 async function load(){
-  if(!key){ $("#list").innerHTML = '<div class="status">Bitte den persönlichen Link öffnen</div>'; return; }
+  if(!key){
+    $("#list").innerHTML = `<form class="keyform" id="keyform"><div class="status">Link einfügen</div>
+      <input id="keyin" type="text" inputmode="url" autocomplete="off" placeholder="https://julylue.github.io/pakete/?k=...">
+      <button type="submit">Öffnen</button></form>`;
+    $("#keyform").addEventListener("submit", ev=>{ ev.preventDefault();
+      const v = $("#keyin").value.trim(); const m = v.match(/[?&]k=([^&#\s]+)/); key = m ? decodeURIComponent(m[1]) : v;
+      try{ localStorage.setItem("pakete-key", key); }catch(e){}
+      load(); });
+    return;
+  }
   if(busy) return;
   try {
     const r = await fetch(API + "?k=" + encodeURIComponent(key), {cache:"no-store"});
     const j = await r.json();
-    if(!j.ok){ $("#list").innerHTML = '<div class="status">Link ungültig</div>'; return; }
+    if(!j.ok){ try{ localStorage.removeItem("pakete-key"); }catch(e){} key = ""; load(); flash("Link ungültig"); return; }
     if(!busy){ items = j.items; render(); }
   } catch(e){ if(!items.length) $("#list").innerHTML = '<div class="status">Keine Verbindung</div>'; }
 }
