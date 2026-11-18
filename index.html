@@ -320,7 +320,7 @@ function renderDetail(){
     stage = `<div class="nophoto">Abgegeben${it.abgegeben_am ? " am " + esc(fmtDate(it.abgegeben_am)) : ""}</div>`;
     below = `<p class="ftitle">${esc(it.titel)}</p>`;
   }
-  const band = it.status === "packen" ? "" :
+  const band = it.status !== "wegbringen" ? "" :
     `<div class="band b-${car}">${ORTE[it.versand] ? esc(ORTE[it.versand]) : "Abgabestelle offen"}</div>`;
   const due = it.status !== "abgegeben" ? dueText(it.frist) : null;
   $("#sheet").innerHTML = `
