@@ -67,6 +67,8 @@
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
   .step{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
   .step.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .nr{display:inline-block;background:var(--ink);color:#fff;font-size:13px;font-weight:800;letter-spacing:.04em;border-radius:6px;padding:1px 6px;margin-right:7px;vertical-align:1px}
+  .nrbig{display:inline-block;background:var(--ink);color:#fff;font-size:22px;font-weight:800;letter-spacing:.05em;border-radius:10px;padding:4px 12px;margin-bottom:6px}
   .big{margin:0 0 14px}
   .big img{width:100%;max-height:62vh;object-fit:contain;background:#f3f1ec;border-radius:14px;display:block;cursor:zoom-in}
   .big figcaption{font-size:15px;color:var(--muted);margin-top:6px}
@@ -157,7 +159,7 @@ function card(it){
   const due = done ? null : dueText(it.frist);
   return `<div class="card ${done?'done':''}" data-id="${esc(it.id)}">
     ${thumbs(it)}
-    <div class="info"><div class="t">${esc(it.titel)}</div>
+    <div class="info"><div class="t">${it.nr ? `<span class="nr">${esc(it.nr)}</span>` : ""}${esc(it.titel)}</div>
       <div class="meta">${done && !ORTE[it.versand] ? "" : pill(it.versand)}${due ? `<span class="due ${due.c}">${due.t}</span>` : ""}${it.kiste ? `<span class="kiste">Kiste ${esc(it.kiste)}</span>` : ""}${done && it.abgegeben_am ? `<span class="due">${esc(fmtDate(it.abgegeben_am))}</span>` : ""}</div></div>
     <button class="check" data-check="${esc(it.id)}" aria-label="abhaken">${CHECK}</button>
   </div>`;
@@ -202,7 +204,7 @@ function renderDetail(){
       + (it.notiz ? `<div class="note">${esc(it.notiz)}</div>` : "");
   }
   $("#sheet").innerHTML = `<div class="grab"></div><button class="x" id="close" aria-label="schließen">×</button>
-    <h2>${esc(it.titel)}</h2>${body}${status}`;
+    ${it.nr ? `<div class="nrbig">${esc(it.nr)}</div>` : ""}<h2>${esc(it.titel)}</h2>${body}${status}`;
 }
 function openDetail(id){ openId = id; renderDetail(); $("#detail").classList.add("open"); }
 function closeDetail(){ openId = null; $("#detail").classList.remove("open"); }
