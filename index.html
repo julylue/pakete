@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pakete">
+<title>Pakete</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#fff; --ink:#1c1c1c; --muted:#8a8780; --line:#e7e4de;
+    --ok:#1f8a4c; --warn:#d9822b; --late:#c62828;
+    --gls:#1d3c9e; --dhl:#ffcc00; --hermes:#0a8fd1; --dpd:#d0103a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding-bottom:90px}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 14px 10px}
+  .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#ebe8e2;border-radius:14px;padding:5px}
+  .tab{border:0;background:transparent;border-radius:10px;padding:10px 4px;font:inherit;font-size:15px;font-weight:600;color:#6b6860;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .tab b{font-size:24px;line-height:1;color:inherit}
+  .tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  main{padding:4px 14px}
+  .group{margin:18px 2px 8px;font-size:14px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.04em}
+  .card{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:10px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer}
+  .thumbs{position:relative;width:64px;height:64px;flex:none}
+  .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:10px;background:#eee;display:block}
+  .thumbs .n{position:absolute;right:-4px;bottom:-4px;background:var(--ink);color:#fff;font-size:13px;font-weight:700;border-radius:10px;padding:1px 7px;border:2px solid #fff}
+  .ph{width:64px;height:64px;border-radius:10px;background:#eee;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:26px}
+  .info{flex:1;min-width:0}
+  .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+  .pill{font-size:13px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  .pill.GLS{background:var(--gls);color:#fff}.pill.DHL{background:var(--dhl);color:#222}
+  .pill.Hermes{background:var(--hermes);color:#fff}.pill.DPD{background:var(--dpd);color:#fff}
+  .pill.none{background:#fff3e6;color:var(--warn);border:1.5px dashed var(--warn)}
+  .due{font-size:13px;color:var(--muted)}
+  .due.soon{color:var(--warn);font-weight:700}.due.late{color:var(--late);font-weight:700}
+  .kiste{font-size:13px;color:var(--muted)}
+  .check{flex:none;width:52px;height:52px;border-radius:50%;border:2.5px solid #cfcac1;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .check svg{width:26px;height:26px;stroke:#cfcac1}
+  .check:active{transform:scale(.94)}
+  .done .check{background:var(--ok);border-color:var(--ok)}.done .check svg{stroke:#fff}
+  .done{opacity:.6}
+  .empty{text-align:center;color:var(--muted);padding:60px 20px}
+  .empty svg{width:56px;height:56px;stroke:#c9c4ba;margin-bottom:8px}
+  .status{font-size:14px;color:var(--muted);text-align:center;padding:8px}
+  /* Detail */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:none}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:#fff;border-radius:22px 22px 0 0;max-height:92vh;overflow:auto;padding:10px 18px 28px;transform:translateY(100%);transition:transform .22s ease}
+  .open .scrim{display:block}.open .sheet{transform:none}
+  .grab{width:44px;height:5px;border-radius:3px;background:#ddd;margin:2px auto 12px}
+  .x{position:absolute;right:12px;top:10px;border:0;background:#f0eee9;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer}
+  .sheet h2{font-size:21px;margin:4px 40px 12px 0}
+  .teile{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .teil{display:flex;gap:12px;align-items:center}
+  .teil img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:#eee}
+  .teil .ph{width:96px;height:96px}
+  .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 8px}
+  .carriers{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .car{border:2px solid var(--line);background:#fff;border-radius:14px;padding:10px;text-align:left;font:inherit;cursor:pointer}
+  .car b{display:block;font-size:16px}.car span{font-size:14px;color:var(--muted)}
+  .car.on.GLS{border-color:var(--gls);background:#eef1fb}.car.on.DHL{border-color:#e0b400;background:#fff9dc}
+  .car.on.Hermes{border-color:var(--hermes);background:#e9f6fd}.car.on.DPD{border-color:var(--dpd);background:#fdeef1}
+  .facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:16px}
+  .facts dt{color:var(--muted)}.facts dd{margin:0;font-weight:600}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+  .step{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 4px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+  .step.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px 12px 18px;display:flex;gap:14px;align-items:center;z-index:30;transition:transform .2s;font-size:16px;max-width:92vw}
+  .toast.show{transform:translateX(-50%)}
+  .toast button{border:0;background:#fff;color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
+  @media(min-width:700px){main,header{max-width:640px;margin:0 auto}.sheet{max-width:640px;margin:0 auto}}
+</style>
+</head>
+<body>
+<header>
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-tab="packen"><b id="c-packen">0</b>Packen</button>
+    <button class="tab" data-tab="wegbringen"><b id="c-wegbringen">0</b>Wegbringen</button>
+    <button class="tab" data-tab="abgegeben"><b id="c-abgegeben">0</b>Abgegeben</button>
+  </div>
+</header>
+<main id="list"><div class="status">Lädt …</div></main>
+
+<div id="detail">
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="toast" id="toast"><span id="toastText"></span><button id="undo">Zurück</button></div>
+
+<script>
+/* Datenquelle: Google-Tabelle "Pakete Pickliste" (Ordner Vinted & Co.) über das Skript "Pakete Schnittstelle".
+   Der Schlüssel kommt nur über den persönlichen Link (?k=...) und bleibt im Gerät. */
+const API = "__API__";
+const ORTE = { GLS:"Türkischer Supermarkt", DHL:"Foto Kasse", Hermes:"Mr. Kiosk", DPD:"NKD" };
+const STEPS = ["packen","wegbringen","abgegeben"];
+const STEP_LABEL = {packen:"Packen", wegbringen:"Wegbringen", abgegeben:"Abgegeben"};
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+let items = [], tab = "packen", openId = null, key = "", busy = 0;
+let undoInfo = null, toastTimer = null;
+try { const t = localStorage.getItem("pakete-tab"); if (STEPS.includes(t)) tab = t; } catch(e){}
+try { key = new URLSearchParams(location.search).get("k") || ""; if(key) localStorage.setItem("pakete-key", key); else key = localStorage.getItem("pakete-key") || ""; } catch(e){}
+if(key && location.search){ try{ history.replaceState(null, "", location.pathname); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const img = id => /^[\w-]{10,}$/.test(String(id||"")) ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w400" : "";
+const teileOf = it => { try { const t = JSON.parse(it.teile || "[]"); return Array.isArray(t) ? t : []; } catch(e){ return []; } };
+
+function dueText(iso){
+  if(!iso) return null;
+  const d = new Date(iso.slice(0,10) + "T00:00:00"); if(isNaN(d)) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  const n = Math.round((d - t) / 86400000);
+  if(n < 0) return {t:"überfällig", c:"late"};
+  if(n === 0) return {t:"heute", c:"late"};
+  if(n === 1) return {t:"bis morgen", c:"soon"};
+  return {t:"bis " + ["So","Mo","Di","Mi","Do","Fr","Sa"][d.getDay()] + " " + d.getDate() + "." + (d.getMonth()+1) + ".", c:""};
+}
+function fmtDate(iso){ const d = new Date(iso); return isNaN(d) ? "" : d.getDate()+"."+(d.getMonth()+1)+"."; }
+function thumbs(it){
+  const t = teileOf(it), src = img(t[0]?.bild);
+  return `<div class="thumbs">${src ? `<img src="${src}" alt="" referrerpolicy="no-referrer">` : `<div class="ph">?</div>`}${t.length > 1 ? `<span class="n">${t.length}</span>` : ""}</div>`;
+}
+function pill(v){ return ORTE[v] ? `<span class="pill ${v}">${v} · ${ORTE[v]}</span>` : `<span class="pill none">Versand?</span>`; }
+
+function card(it){
+  const done = it.status === "abgegeben";
+  const due = done ? null : dueText(it.frist);
+  return `<div class="card ${done?'done':''}" data-id="${esc(it.id)}">
+    ${thumbs(it)}
+    <div class="info"><div class="t">${esc(it.titel)}</div>
+      <div class="meta">${pill(it.versand)}${due ? `<span class="due ${due.c}">${due.t}</span>` : ""}${it.kiste ? `<span class="kiste">Kiste ${esc(it.kiste)}</span>` : ""}${done && it.abgegeben_am ? `<span class="due">${esc(fmtDate(it.abgegeben_am))}</span>` : ""}</div></div>
+    <button class="check" data-check="${esc(it.id)}" aria-label="abhaken">${CHECK}</button>
+  </div>`;
+}
+
+function render(){
+  for(const s of STEPS) $("#c-"+s).textContent = items.filter(i=>i.status===s).length;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
+  const list = items.filter(i=>i.status===tab).sort((a,b)=> tab === "abgegeben"
+    ? String(b.abgegeben_am).localeCompare(String(a.abgegeben_am))
+    : String(a.frist||"9").localeCompare(String(b.frist||"9")) || String(a.titel).localeCompare(String(b.titel)));
+  const box = $("#list");
+  if(!list.length) box.innerHTML = `<div class="empty">${CHECK}<div>Nichts offen</div></div>`;
+  else if(tab === "wegbringen"){
+    const g = {}; for(const it of list){ const k = ORTE[it.versand] ? it.versand : "_"; (g[k] ||= []).push(it); }
+    box.innerHTML = ["Hermes","DHL","GLS","DPD","_"].filter(k=>g[k]).map(k =>
+      `<div class="group">${k==="_" ? "Versand noch offen" : esc(ORTE[k]) + " · " + k}</div>` + g[k].map(card).join("")).join("");
+  } else box.innerHTML = list.map(card).join("");
+  if(openId) renderDetail();
+}
+
+function renderDetail(){
+  const it = items.find(i=>i.id===openId); if(!it){ closeDetail(); return; }
+  const teile = teileOf(it).map(t=>{ const src = img(t.bild);
+    return `<div class="teil">${src?`<img src="${src}" alt="" referrerpolicy="no-referrer">`:`<div class="ph">?</div>`}<div>${esc(t.name)}</div></div>`; }).join("");
+  const cars = Object.keys(ORTE).map(k => `<button class="car ${k} ${it.versand===k?'on':''}" data-car="${k}"><b>${k}</b><span>${ORTE[k]}</span></button>`).join("");
+  const due = dueText(it.frist);
+  const facts = [ it.kiste ? ["Kiste", esc(it.kiste)] : null, due ? ["Frist", due.t] : null, it.notiz ? ["Notiz", esc(it.notiz)] : null ]
+    .filter(Boolean).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("");
+  const steps = STEPS.map(s=>`<button class="step ${it.status===s?'on':''}" data-step="${s}">${STEP_LABEL[s]}</button>`).join("");
+  $("#sheet").innerHTML = `<div class="grab"></div><button class="x" id="close" aria-label="schließen">×</button>
+    <h2>${esc(it.titel)}</h2><div class="teile">${teile}</div>
+    <div class="lbl">Abgeben bei</div><div class="carriers">${cars}</div>
+    ${facts ? `<div class="lbl">Info</div><dl class="facts">${facts}</dl>` : ""}
+    <div class="lbl">Stand</div><div class="steps">${steps}</div>`;
+}
+function openDetail(id){ openId = id; renderDetail(); $("#detail").classList.add("open"); }
+function closeDetail(){ openId = null; $("#detail").classList.remove("open"); }
+
+function flash(text, undo){
+  $("#toastText").textContent = text; $("#undo").style.display = undo ? "" : "none"; undoInfo = undo || null;
+  $("#toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(()=>$("#toast").classList.remove("show"), 4000);
+}
+
+async function load(){
+  if(!key){ $("#list").innerHTML = '<div class="status">Bitte den persönlichen Link öffnen</div>'; return; }
+  if(busy) return;
+  try {
+    const r = await fetch(API + "?k=" + encodeURIComponent(key), {cache:"no-store"});
+    const j = await r.json();
+    if(!j.ok){ $("#list").innerHTML = '<div class="status">Link ungültig</div>'; return; }
+    if(!busy){ items = j.items; render(); }
+  } catch(e){ if(!items.length) $("#list").innerHTML = '<div class="status">Keine Verbindung</div>'; }
+}
+
+async function save(id, patch){
+  const it = items.find(i=>i.id===id); if(!it) return false;
+  const before = {...it}; Object.assign(it, patch); render(); busy++;
+  try {
+    const r = await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({k:key, id, patch})});
+    const j = await r.json(); if(!j.ok) throw 0;
+    busy--; if(!busy){ items = j.items; render(); }
+    return true;
+  } catch(e){
+    busy--; Object.assign(it, before); render(); flash("Nicht gespeichert"); return false;
+  }
+}
+
+async function advance(id){
+  const it = items.find(i=>i.id===id); if(!it) return;
+  const old = {status: it.status, abgegeben_am: it.abgegeben_am || ""};
+  const next = it.status === "packen" ? {status:"wegbringen"}
+    : it.status === "wegbringen" ? {status:"abgegeben", abgegeben_am:new Date().toISOString()}
+    : {status:"wegbringen", abgegeben_am:""};
+  flash(old.status === "packen" ? "Gepackt" : STEP_LABEL[next.status], {id, patch:old});
+  await save(id, next);
+}
+
+document.addEventListener("click", e=>{
+  const tb = e.target.closest(".tab");
+  if(tb){ tab = tb.dataset.tab; try{localStorage.setItem("pakete-tab",tab)}catch(_){}; render(); window.scrollTo(0,0); return; }
+  const chk = e.target.closest("[data-check]"); if(chk){ e.stopPropagation(); advance(chk.dataset.check); return; }
+  const c = e.target.closest(".card"); if(c){ openDetail(c.dataset.id); return; }
+  if(e.target.id === "scrim" || e.target.closest("#close")){ closeDetail(); return; }
+  const car = e.target.closest("[data-car]");
+  if(car && openId){ const it = items.find(i=>i.id===openId); save(openId, {versand: it.versand===car.dataset.car ? "" : car.dataset.car}); return; }
+  const st = e.target.closest("[data-step]");
+  if(st && openId){ const s = st.dataset.step; save(openId, {status:s, abgegeben_am: s==="abgegeben" ? new Date().toISOString() : ""}); return; }
+  if(e.target.id === "undo" && undoInfo){ const u = undoInfo; undoInfo = null; $("#toast").classList.remove("show"); save(u.id, u.patch); }
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeDetail(); });
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) load(); });
+setInterval(()=>{ if(!document.hidden) load(); }, 20000);
+load();
+</script>
+</body>
+</html>
