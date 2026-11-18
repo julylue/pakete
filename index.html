@@ -110,8 +110,7 @@ const img = id => /^[\w-]{10,}$/.test(String(id||"")) ? "https://drive.google.co
 const teileOf = it => { try { const t = JSON.parse(it.teile || "[]"); return Array.isArray(t) ? t : []; } catch(e){ return []; } };
 
 function dueText(iso){
-  if(!iso) return null;
-  const d = new Date(iso.slice(0,10) + "T00:00:00"); if(isNaN(d)) return null;
+  const d = toDay(iso); if(!d) return null;
   const t = new Date(); t.setHours(0,0,0,0);
   const n = Math.round((d - t) / 86400000);
   if(n < 0) return {t:"überfällig", c:"late"};
@@ -119,6 +118,13 @@ function dueText(iso){
   if(n === 1) return {t:"bis morgen", c:"soon"};
   return {t:"bis " + ["So","Mo","Di","Mi","Do","Fr","Sa"][d.getDay()] + " " + d.getDate() + "." + (d.getMonth()+1) + ".", c:""};
 }
+function toDay(v){
+  if(!v) return null; const s = String(v);
+  const d = /^\d{4}-\d\d-\d\d$/.test(s) ? new Date(s + "T00:00:00") : new Date(s);
+  if(isNaN(d)) return null; d.setHours(0,0,0,0); return d;
+}
+const ts = v => { const d = new Date(String(v||"")); return isNaN(d) ? 0 : d.getTime(); };
+const dayTs = v => { const d = toDay(v); return d ? d.getTime() : 9e15; };
 function fmtDate(iso){ const d = new Date(iso); return isNaN(d) ? "" : d.getDate()+"."+(d.getMonth()+1)+"."; }
 function thumbs(it){
   const t = teileOf(it), src = img(t[0]?.bild);
@@ -141,8 +147,8 @@ function render(){
   for(const s of STEPS) $("#c-"+s).textContent = items.filter(i=>i.status===s).length;
   document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("on", b.dataset.tab===tab));
   const list = items.filter(i=>i.status===tab).sort((a,b)=> tab === "abgegeben"
-    ? String(b.abgegeben_am).localeCompare(String(a.abgegeben_am))
-    : String(a.frist||"9").localeCompare(String(b.frist||"9")) || String(a.titel).localeCompare(String(b.titel)));
+    ? ts(b.abgegeben_am) - ts(a.abgegeben_am)
+    : (dayTs(a.frist) - dayTs(b.frist)) || String(a.titel).localeCompare(String(b.titel)));
   const box = $("#list");
   if(!list.length) box.innerHTML = `<div class="empty">${CHECK}<div>Nichts offen</div></div>`;
   else if(tab === "wegbringen"){
