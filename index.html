@@ -155,6 +155,9 @@
   .packnr{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:clamp(30px,10vw,46px);border-radius:16px;padding:10px 20px;background:var(--ink);color:#fff}
   .packnr.c-DHL{background:var(--dhl);color:#222}.packnr.c-GLS{background:var(--gls)}.packnr.c-DPD{background:var(--dpd)}.packnr.c-Hermes{background:var(--hermes)}
   .packhint{margin:0 0 14px;color:var(--muted);font-size:15px}
+  .wrapbox{width:100%;background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:3px;text-align:left;border-left:6px solid var(--ink)}
+  .wrapbox b{font-size:18px}
+  .wrapbox span{font-size:15px;color:#4a4740}
   .plist{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:8px;overflow:auto}
   .plist li{display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:8px;font-size:16px;font-weight:600}
   .plist img,.plist .ph{width:48px;height:48px;object-fit:cover;border-radius:8px;flex:none}
@@ -304,6 +307,8 @@ function renderDetail(){
   } else if(it.status === "packen"){
     const teile = teileOf(it);
     stage = `<div class="pack"><div class="packnr c-${car}">${esc(it.nr || "")}</div><p class="packhint">aufs Paket schreiben</p>
+      ${it.verpackung ? (()=>{ const p = String(it.verpackung).split("|").map(x=>x.trim()).filter(Boolean);
+        return `<div class="wrapbox"><b>${esc(p[0])}</b>${p.slice(1).map(x=>`<span>${esc(x)}</span>`).join("")}</div>`; })() : ""}
       <ul class="plist">${teile.map(t=>`<li>${img(t.bild) ? `<img src="${img(t.bild)}" alt="" referrerpolicy="no-referrer">` : `<span class="ph">?</span>`}<span>${esc(t.name)}</span></li>`).join("")}</ul></div>`;
     below = `<button class="back" data-back="picken">Doch nicht gepickt</button>`;
   } else if(it.status === "wegbringen"){
