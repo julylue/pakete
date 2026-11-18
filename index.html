@@ -198,12 +198,29 @@
   #dash h3{font-size:17px;margin:26px 0 10px}
   .bars{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;height:120px;align-items:end;background:#fff;border-radius:14px;padding:10px 10px 22px}
   .bar{height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative}
+  .bar{border:0;padding:0;background:none;cursor:pointer;font:inherit}
   .bar span{display:block;background:var(--ink);border-radius:4px 4px 0 0;min-height:0}
+  .bar.zero span{background:#e4e0d8;min-height:3px}
+  .bars.has-sel .bar:not(.pk) span{opacity:.35}
+  .bar.pk em{color:var(--ink);font-weight:700}
+  .pick{background:#fff;border-radius:14px;padding:12px;margin-top:8px}
+  .pick p{margin:0;font-size:15px}.pick p b{font-size:20px;margin-right:6px}
+  .pick ul{list-style:none;margin:8px 0 0;padding:0}
+  .pick li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #f0ede7;font-size:14.5px}
+  .pick li span{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .seg{display:inline-flex;background:#ebe7df;border-radius:10px;padding:3px;margin:0 0 10px}
+  .seg button{border:0;background:none;font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink)}
   .bar em{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--muted)}
-  .heat{display:grid;grid-template-columns:86px repeat(7,1fr);gap:4px;background:#fff;border-radius:14px;padding:10px}
+  .heat{display:grid;grid-template-columns:76px repeat(7,minmax(0,1fr));gap:4px;background:#fff;border-radius:14px;padding:10px}
   .heat b{font-size:12px;color:var(--muted);text-align:center;font-weight:600}
   .heat b.rl{text-align:left;align-self:center}
-  .heat i{aspect-ratio:1;border-radius:7px;background:rgba(31,138,76,var(--a));display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;font-weight:700;color:#fff;outline:1px solid #efece6}
+  .heat i{cursor:pointer;min-width:0;width:100%;box-sizing:border-box}
+  .heat.fav i{background:rgba(196,62,74,var(--a))}
+  .heat.has-sel i:not(.pk){opacity:.45}
+  .heat i.pk{box-shadow:inset 0 0 0 2px var(--ink)}
+  .heat i.lo{color:var(--ink)}
+  .heat i{height:38px;border-radius:7px;background:rgba(31,138,76,var(--a));display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;font-weight:700;color:#fff;outline:1px solid #efece6}
   .note{font-size:14px;color:var(--muted);margin:8px 2px 0}
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
   .pair div{background:#fff;border-radius:14px;padding:12px}
@@ -414,6 +431,9 @@ try { const m = localStorage.getItem("pakete-mode"); if(m) mode = m; } catch(e){
 const eur = n => (Math.round(n*100)/100).toLocaleString("de-DE",{minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits:2}) + " €";
 const num = v => { const n = parseFloat(String(v).replace(",", ".").replace(/[^\d.\-]/g,"")); return isNaN(n) ? 0 : n; };
 const WD = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+let selDay = null, heatMode = "kauf", selCell = null, favs = [];
+const hm = d => String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+const plural = (n, a, b) => n + " " + (n === 1 ? a : b);
 const SLOTS = [["Nachts",0,6],["Vormittags",6,12],["Nachmittags",12,18],["Abends",18,24]];
 function hasTime(v){ return /T\d\d:\d\d/.test(String(v)) && !/T00:00:00$/.test(String(v)); }
 function applyMode(){
@@ -450,18 +470,37 @@ function renderDash(){
   const days = []; for(let k=13;k>=0;k--){ const d = new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate()-k); days.push(d); }
   const perDay = days.map(d=>{ const e = new Date(d); e.setDate(e.getDate()+1); const ss = sales.filter(s=>s.t>=d && s.t<e); return {d, sum:ss.reduce((a,s)=>a+s.p,0), n:ss.length}; });
   const maxD = Math.max(1, ...perDay.map(x=>x.sum));
+  if(selDay === null || selDay > 13){ let k = 13; while(k > 0 && !perDay[k].n) k--; selDay = k; }
   const bars = perDay.map((x,i)=>{ const h = Math.round(x.sum/maxD*100);
-    return `<div class="bar" title="${x.d.getDate()}.${x.d.getMonth()+1}.: ${eur(x.sum)}"><span style="height:${h}%"></span><em>${i%2===0 || i===13 ? x.d.getDate()+"." : ""}</em></div>`; }).join("");
+    return `<button class="bar${x.n?"":" zero"}${i===selDay?" pk":""}" data-day="${i}" aria-label="${x.d.getDate()}.${x.d.getMonth()+1}.: ${eur(x.sum)}"><span style="height:${h}%"></span><em>${i%2===1 || i===selDay ? x.d.getDate()+"." : ""}</em></button>`; }).join("");
+  const pd = perDay[selDay];
+  const pdList = sales.filter(s=>s.t>=pd.d && s.t < new Date(pd.d.getTime()+864e5)).sort((a,b)=>a.t-b.t);
+  const dayPick = `<div class="pick"><p><b>${eur(pd.sum)}</b>${WD[(pd.d.getDay()+6)%7]} ${pd.d.getDate()}.${pd.d.getMonth()+1}., ${pd.n ? plural(pd.n,"Verkauf","Verkäufe") : "kein Verkauf"}</p>
+    ${pdList.length ? `<ul>${pdList.map(s=>`<li>${esc(s.titel)}<span>${hasTime(s.verkauft_am) ? hm(s.t) + " · " : ""}${eur(s.p)}</span></li>`).join("")}</ul>` : ""}</div>`;
 
   // Wann verkauft (Wochentag x Tageszeit)
   const timed = sales.filter(s=>hasTime(s.verkauft_am));
-  const grid = SLOTS.map(()=>WD.map(()=>0));
-  timed.forEach(s=>{ const wd = (s.t.getDay()+6)%7; const h = s.t.getHours(); const r = SLOTS.findIndex(x=>h>=x[1] && h<x[2]); grid[r][wd]++; });
-  const gmax = Math.max(1, ...grid.flat());
-  const heat = `<div class="heat"><span></span>${WD.map(w=>`<b>${w}</b>`).join("")}${SLOTS.map((sl,r)=>`<b class="rl">${sl[0]}</b>${WD.map((w,c)=>{ const v = grid[r][c];
-      return `<i style="--a:${v? .18 + .82*v/gmax : 0}" title="${w} ${sl[0]}: ${v}">${v||""}</i>`; }).join("")}`).join("")}</div>`;
-  const wdTot = WD.map((w,c)=>grid.reduce((a,row)=>a+row[c],0)); const bestWd = wdTot.indexOf(Math.max(...wdTot));
-  const slTot = grid.map(row=>row.reduce((a,b)=>a+b,0)); const bestSl = slTot.indexOf(Math.max(...slTot));
+  const favEv = favs.map(f=>({titel:f.artikel, t:new Date(f.zeit)})).filter(f=>!isNaN(f.t));
+  if(!favEv.length) heatMode = "kauf";
+  const ev = heatMode === "fav" ? favEv : timed;
+  const cellOf = d => [SLOTS.findIndex(x=>d.getHours()>=x[1] && d.getHours()<x[2]), (d.getDay()+6)%7];
+  const grid = SLOTS.map(()=>WD.map(()=>[]));
+  ev.forEach(e=>{ const [r,c] = cellOf(e.t); grid[r][c].push(e); });
+  const gmax = Math.max(1, ...grid.flat().map(x=>x.length));
+  const isSel = (r,c) => selCell && selCell[0]===r && selCell[1]===c;
+  const heat = `<div class="heat${heatMode==="fav"?" fav":""}${selCell?" has-sel":""}"><span></span>${WD.map(w=>`<b>${w}</b>`).join("")}${SLOTS.map((sl,r)=>`<b class="rl">${sl[0]}</b>${WD.map((w,c)=>{ const v = grid[r][c].length;
+      return `<i role="button" tabindex="0" data-cell="${r},${c}" class="${isSel(r,c)?"pk":""}${v && v/gmax < .45 ? " lo" : ""}" style="--a:${v? .18 + .82*v/gmax : 0}" aria-label="${w} ${sl[0]}: ${v}">${v||""}</i>`; }).join("")}`).join("")}</div>`;
+  const WDL = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+  let cellPick = "";
+  if(selCell){ const [r,c] = selCell; const list = grid[r][c].slice().sort((a,b)=>a.t-b.t);
+    const word = heatMode==="fav" ? "Mal favorisiert" : (list.length===1 ? "Verkauf" : "Verkäufe");
+    cellPick = `<div class="pick"><p><b>${list.length}</b>${word}, ${WDL[c]} ${SLOTS[r][0].toLowerCase()} (${SLOTS[r][1]}–${SLOTS[r][2]} Uhr)</p>
+      ${!list.length ? "" : heatMode==="fav"
+        ? `<ul>${Object.entries(list.reduce((a,e)=>(a[e.titel]=(a[e.titel]||0)+1,a),{})).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<li>${esc(t)}<span>${n}×</span></li>`).join("")}</ul>`
+        : `<ul>${list.map(e=>`<li>${esc(e.titel)}<span>${e.t.getDate()}.${e.t.getMonth()+1}. ${hm(e.t)} · ${eur(e.p)}</span></li>`).join("")}</ul>`}</div>`; }
+  const topFav = Object.entries(favEv.reduce((a,f)=>(a[f.titel]=(a[f.titel]||0)+1,a),{})).sort((a,b)=>b[1]-a[1]);
+  const wdTot = WD.map((w,c)=>grid.reduce((a,row)=>a+row[c].length,0)); const bestWd = wdTot.indexOf(Math.max(...wdTot));
+  const slTot = grid.map(row=>row.reduce((a,b)=>a+b.length,0)); const bestSl = slTot.indexOf(Math.max(...slTot));
 
   // Verkaufsdauer + Nachlass
   const withList = sales.filter(s=>num(s.einstellpreis)>0);
@@ -476,6 +515,7 @@ function renderDash(){
 
   const steps = [["Online", live.length, null],["Picken", cnt("picken"), "picken"],["Packen", cnt("packen"), "packen"],["Wegbringen", cnt("wegbringen"), "wegbringen"],["Abgegeben", cnt("abgegeben"), "abgegeben"]];
 
+  const openDet = [...document.querySelectorAll("#dash details")].map(d=>d.open);
   $("#dash").innerHTML = `
   <div class="hero">
     <p class="k">Umsatz bisher</p>
@@ -486,11 +526,18 @@ function renderDash(){
   ${tips.length ? `<ul class="tips">${tips.slice(0,3).map(t=>`<li>${t}</li>`).join("")}</ul>` : ""}
 
   <h3>Umsatz der letzten 14 Tage</h3>
-  <div class="bars">${bars}</div>
+  <div class="bars has-sel">${bars}</div>
+  ${dayPick}
 
-  <h3>Wann verkauft wird</h3>
+  <h3>${heatMode==="fav" ? "Wann favorisiert wird" : "Wann verkauft wird"}</h3>
+  ${favEv.length ? `<div class="seg"><button data-heat="kauf" class="${heatMode==="kauf"?"on":""}">Gekauft</button><button data-heat="fav" class="${heatMode==="fav"?"on":""}">Favorisiert</button></div>` : ""}
   ${heat}
-  <p class="note">${timed.length ? `Bisher am meisten am ${["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][bestWd]} und ${SLOTS[bestSl][0].toLowerCase()}. ` : ""}Basis: ${timed.length} Verkäufe mit Uhrzeit. Ein verlässliches Muster zeigt sich erst ab etwa 30.</p>
+  ${cellPick}
+  <p class="note">${ev.length ? `Bisher am meisten am ${WDL[bestWd]} und ${SLOTS[bestSl][0].toLowerCase()}. ` : ""}${heatMode==="fav"
+    ? `Basis: ${favEv.length} Favorisierungen seit ${favEv.length ? favEv.reduce((a,f)=>f.t<a?f.t:a, favEv[0].t).getDate()+"."+(favEv.reduce((a,f)=>f.t<a?f.t:a, favEv[0].t).getMonth()+1)+"." : ""}`
+    : `Basis: ${timed.length} Verkäufe mit Uhrzeit. Ein verlässliches Muster zeigt sich erst ab etwa 30.`} Feld antippen für Details.</p>
+  ${heatMode==="fav" && topFav.length ? `<details><summary>Am häufigsten favorisiert <span>${topFav.length} Artikel</span></summary>
+    <ul class="rows">${topFav.map(([t,n])=>`<li><span class="dt">${n}×</span><span class="nm">${esc(t)}</span><b></b></li>`).join("")}</ul></details>` : ""}
 
   <div class="pair">
     <div><b>${avgDur===null ? "–" : (avgDur<1 ? "unter 1" : avgDur.toFixed(1).replace(".",","))} ${avgDur!==null && avgDur.toFixed(1)==="1.0" ? "Tag" : "Tage"}</b><span>vom Einstellen bis zum Verkauf (${dur.length} Verkäufe)</span></div>
@@ -504,6 +551,7 @@ function renderDash(){
   <details><summary>Am längsten online <span>${live.length} live</span></summary>
     <ul class="rows">${shelf.map(x=>`<li><span class="dt">${x.d} T.</span><span class="nm">${esc(x.s.artikel)}</span><b>${eur(num(x.s.preis))}</b></li>`).join("")}</ul>
   </details>`;
+  const dets = document.querySelectorAll("#dash details"); if(openDet.length === dets.length) dets.forEach((d,i)=>d.open = openDet[i]);
   applyMode();
 }
 
@@ -523,7 +571,7 @@ async function load(){
     const r = await fetch(API + "?k=" + encodeURIComponent(key) + "&dash=1", {cache:"no-store"});
     const j = await r.json();
     if(!j.ok){ try{ localStorage.removeItem("pakete-key"); }catch(e){} key = ""; load(); flash("Link ungültig"); return; }
-    if(!busy){ items = j.items; if(j.stock){ stock = j.stock; owner = true; } render(); renderDash(); }
+    if(!busy){ items = j.items; if(j.stock){ stock = j.stock; owner = true; } if(j.favs) favs = j.favs; render(); renderDash(); }
   } catch(e){ if(!items.length) $("#list").innerHTML = '<div class="status">Keine Verbindung</div>'; }
 }
 
@@ -562,6 +610,9 @@ document.addEventListener("click", e=>{
     const pos = shown.findIndex(i=>i.id===id); const nxt = shown[pos+1] || shown[pos-1];
     openId = nxt ? nxt.id : null; if(!nxt) closeDetail();
     flash("Zurück zu " + STEP_LABEL[bk.dataset.back], {id, patch:old}); save(id, {status: bk.dataset.back, abgegeben_am: ""}); return; }
+  const dy = e.target.closest("[data-day]"); if(dy){ selDay = +dy.dataset.day; renderDash(); return; }
+  const hb = e.target.closest("[data-heat]"); if(hb){ heatMode = hb.dataset.heat; selCell = null; renderDash(); return; }
+  const ce = e.target.closest("[data-cell]"); if(ce){ const rc = ce.dataset.cell.split(",").map(Number); selCell = selCell && selCell[0]===rc[0] && selCell[1]===rc[1] ? null : rc; renderDash(); return; }
   const md = e.target.closest("[data-mode]");
   if(md){ mode = md.dataset.mode; try{localStorage.setItem("pakete-mode",mode)}catch(_){}; applyMode(); window.scrollTo(0,0); return; }
   const gt = e.target.closest("[data-goto]");

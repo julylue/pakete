@@ -30,13 +30,19 @@ function stock_() {
     const o = {}; Object.keys(want).forEach(k => { const c = col(want[k]); o[k] = c >= 0 ? cell_(r[c]) : ""; }); return o;
   });
 }
+function favs_() {
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName("favoriten");
+  if (!sh) return [];
+  const v = sh.getDataRange().getValues(); v.shift();
+  return v.filter(r => r[0] !== "").map(r => ({ zeit: cell_(r[0]).replace(" ", "T"), artikel: cell_(r[1]) }));
+}
 function role_(k) { return k === OWNER_KEY ? "owner" : (k === KEY ? "helper" : ""); }
 
 function doGet(e) {
   const role = role_(e.parameter.k || "");
   if (!role) return out_({ ok: false, error: "key" });
   const res = { ok: true, items: rows_(role === "owner") };
-  if (role === "owner" && e.parameter.dash) res.stock = stock_();
+  if (role === "owner" && e.parameter.dash) { res.stock = stock_(); res.favs = favs_(); }
   return out_(res);
 }
 
