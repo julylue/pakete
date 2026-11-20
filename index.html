@@ -459,8 +459,12 @@ function renderDash(){
   const tips = [];
   const open = items.filter(i=>i.status!=="abgegeben");
   const soon = open.map(i=>({i, d:dayTs(i.frist)})).filter(x=>x.d<9e15).sort((a,b)=>a.d-b.d);
-  if(soon.length){ const d0 = soon[0].d; const n = soon.filter(x=>x.d===d0).length; const dt = dueText(soon[0].i.frist);
-    tips.push(dt.t === "überfällig" ? `${n} ${n===1?"Paket ist":"Pakete sind"} überfällig` : `${n} ${n===1?"Paket muss":"Pakete müssen"} ${dt.t} weg`); }
+  if(soon.length){ // alle offenen Fristen zeigen, je Datum eine Zeile (Julys Wunsch 20.11.2026)
+    const groups = []; soon.forEach(x=>{ const g = groups.find(g=>g.d===x.d); if(g) g.n++; else groups.push({d:x.d, n:1, f:x.i.frist}); });
+    let late = 0; const lines = [];
+    groups.forEach(g=>{ const dt = dueText(g.f); if(dt.t === "überfällig") late += g.n; else lines.push(`${g.n} ${g.n===1?"Paket muss":"Pakete müssen"} ${dt.t} weg`); });
+    if(late) lines.unshift(`${late} ${late===1?"Paket ist":"Pakete sind"} überfällig`);
+    tips.push(lines.join("<br>")); }
   const noCode = open.filter(i=>!i.qr && i.status!=="abgegeben");
   if(noCode.length) tips.push(`${noCode.map(i=>esc(i.nr||i.titel)).join(", ")}: Versand-Code fehlt`);
   const old = live.map(s=>({s, d:(now - new Date(s.eingestellt))/864e5})).filter(x=>x.s.eingestellt && x.d>=14);
